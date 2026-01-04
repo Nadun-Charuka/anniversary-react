@@ -6,7 +6,7 @@ import {
   useTransform,
 } from "framer-motion";
 
-const START_DATE = "2024-01-03"; // Change to your actual date
+const START_DATE = "2025-01-03"; // Change to your actual date
 
 const App = () => {
   const [unlocked, setUnlocked] = useState(false);
@@ -29,22 +29,24 @@ const App = () => {
 // 🔒 LOCK SCREEN with Puzzle
 const LockScreen = ({ onUnlock }) => {
   const [hearts, setHearts] = useState([false, false, false, false]);
-  const [showMessage, setShowMessage] = useState(false);
 
+  // Calculate if all hearts are active
+  const allHeartsActive = hearts.every((h) => h);
+
+  // Use effect only for the unlock timeout
   useEffect(() => {
-    if (hearts.every((h) => h)) {
-      setShowMessage(true);
-      setTimeout(() => onUnlock(), 2000);
+    if (allHeartsActive) {
+      const timer = setTimeout(() => onUnlock(), 2000);
+      return () => clearTimeout(timer);
     }
-  }, [hearts, onUnlock]);
+  }, [allHeartsActive, onUnlock]);
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 1.2, filter: "blur(20px)" }}
-      // FIX: min-h-[100dvh] ensures full height on mobile browsers
-      className="min-h-[100dvh] flex flex-col items-center justify-center p-8 relative z-20"
+      className="min-h-dvh flex flex-col items-center justify-center p-8 relative z-20"
     >
       <motion.div
         animate={{
@@ -64,14 +66,13 @@ const LockScreen = ({ onUnlock }) => {
           animate={{ scale: 1, rotate: 0 }}
           transition={{ type: "spring", duration: 1 }}
         >
-          {/* Responsive Text: text-5xl on mobile, text-7xl on desktop */}
           <h1 className="text-5xl md:text-7xl font-bold bg-linear-to-r from-pink-500 via-rose-500 to-purple-500 bg-clip-text text-transparent mb-4">
             Hey Nathasha ✨
           </h1>
           <p className="text-rose-400 text-lg">Unlock your surprise...</p>
         </motion.div>
 
-        {!showMessage ? (
+        {!allHeartsActive ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -94,7 +95,6 @@ const LockScreen = ({ onUnlock }) => {
                       return newHearts;
                     })
                   }
-                  // Responsive sizing for buttons
                   className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center text-4xl transition-all duration-300 ${
                     active
                       ? "bg-linear-to-br from-pink-400 to-rose-500 shadow-lg shadow-pink-300"
@@ -152,9 +152,12 @@ const MainExperience = () => {
   return (
     <div
       ref={containerRef}
-      // FIX: h-[100dvh] prevents mobile address bar glitch
-      // FIX: overflow-x-hidden prevents horizontal scrolling
-      className="h-[100dvh] w-full overflow-y-scroll overflow-x-hidden snap-y snap-mandatory relative z-10 scroll-smooth"
+      className="h-dvh w-full overflow-y-scroll overflow-x-hidden snap-y snap-mandatory relative z-10 scroll-smooth"
+      style={{
+        // CRITICAL FIX: Prevent elastic scrolling on iOS
+        WebkitOverflowScrolling: "touch",
+        overscrollBehavior: "contain",
+      }}
     >
       <HeroSection timeLeft={timeLeft} scrollYProgress={scrollYProgress} />
       <TimelineSection />
@@ -172,8 +175,7 @@ const HeroSection = ({ timeLeft, scrollYProgress }) => {
   return (
     <motion.section
       style={{ opacity, scale }}
-      // FIX: min-h-[100dvh] for full mobile height
-      className="min-h-[100dvh] w-full snap-start flex flex-col items-center justify-center p-4 md:p-8 relative overflow-hidden"
+      className="min-h-dvh w-full snap-start flex flex-col items-center justify-center p-4 md:p-8 relative overflow-hidden"
     >
       <motion.div
         initial={{ opacity: 0, y: 50 }}
@@ -186,7 +188,6 @@ const HeroSection = ({ timeLeft, scrollYProgress }) => {
             backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
           }}
           transition={{ duration: 5, repeat: Infinity }}
-          // FIX: text-5xl on mobile (was 6xl), leading-tight prevents overlap
           className="text-5xl md:text-8xl font-black bg-linear-to-r from-pink-500 via-rose-500 to-purple-500 bg-clip-text text-transparent bg-size-[200%_auto] leading-tight px-2"
         >
           Nadun & Nathasha
@@ -232,7 +233,6 @@ const TimerBox = ({ val, label }) => (
       key={val}
       initial={{ scale: 1.5, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      // FIX: text-2xl on mobile (was 3xl) prevents number wrapping
       className="text-2xl md:text-5xl font-black text-transparent bg-linear-to-br from-pink-500 to-purple-500 bg-clip-text tabular-nums"
     >
       {val}
@@ -245,12 +245,12 @@ const TimerBox = ({ val, label }) => (
 
 const TimelineSection = () => {
   return (
-    <section className="min-h-screen snap-start flex items-center justify-center p-8 py-20">
-      <div className="max-w-4xl w-full space-y-12">
+    <section className="min-h-screen snap-start flex items-center justify-center p-4 md:p-8 py-20">
+      <div className="max-w-4xl w-full space-y-8 md:space-y-12">
         <motion.h3
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
-          className="text-4xl md:text-5xl font-bold text-center bg-linear-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent mb-16"
+          className="text-4xl md:text-5xl font-bold text-center bg-linear-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent mb-8 md:mb-16"
         >
           Our Journey ✨
         </motion.h3>
@@ -272,26 +272,30 @@ const TimelineCard = ({ memory, index }) => {
       whileInView={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.6, delay: index * 0.1 }}
       viewport={{ once: true, margin: "-100px" }}
-      className={`flex items-center gap-6 ${
+      className={`flex items-center gap-4 md:gap-6 ${
         isEven ? "flex-col md:flex-row" : "flex-col md:flex-row-reverse"
       }`}
     >
       <motion.div
         whileHover={{ scale: 1.1, rotate: 5 }}
-        className="w-24 h-24 rounded-2xl bg-linear-to-br from-pink-400 to-purple-500 flex items-center justify-center text-5xl shadow-xl shrink-0"
+        className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-linear-to-br from-pink-400 to-purple-500 flex items-center justify-center text-4xl md:text-5xl shadow-xl shrink-0"
       >
         {memory.icon}
       </motion.div>
 
       <motion.div
         whileHover={{ scale: 1.02 }}
-        className="flex-1 bg-white/30 backdrop-blur-xl p-6 rounded-2xl border border-white/30 shadow-lg"
+        className="flex-1 w-full bg-white/30 backdrop-blur-xl p-4 md:p-6 rounded-2xl border border-white/30 shadow-lg"
       >
-        <h4 className="text-2xl font-bold text-gray-800 mb-2">
+        <h4 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">
           {memory.title}
         </h4>
-        <p className="text-rose-500 font-medium mb-2">{memory.date}</p>
-        <p className="text-gray-600">{memory.description}</p>
+        <p className="text-rose-500 font-medium mb-2 text-sm md:text-base">
+          {memory.date}
+        </p>
+        <p className="text-gray-600 text-sm md:text-base">
+          {memory.description}
+        </p>
       </motion.div>
     </motion.div>
   );
@@ -318,17 +322,17 @@ const GallerySection = () => {
   ];
 
   return (
-    <section className="min-h-screen snap-start flex items-center justify-center p-8 py-20">
+    <section className="min-h-screen snap-start flex items-center justify-center p-4 md:p-8 py-20">
       <div className="max-w-5xl w-full">
         <motion.h3
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
-          className="text-4xl md:text-5xl font-bold text-center bg-linear-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent mb-16"
+          className="text-4xl md:text-5xl font-bold text-center bg-linear-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent mb-8 md:mb-16"
         >
           Our Memories 💕
         </motion.h3>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
           {photos.map((photo, index) => (
             <motion.div
               key={index}
@@ -337,10 +341,12 @@ const GallerySection = () => {
               whileHover={{ scale: 1.05, rotate: 5 }}
               transition={{ delay: index * 0.1 }}
               viewport={{ once: true }}
-              className={`aspect-square rounded-2xl bg-linear-to-br ${photo.color} p-6 flex flex-col items-center justify-center text-center shadow-xl cursor-pointer`}
+              className={`aspect-square rounded-2xl bg-linear-to-br ${photo.color} p-4 md:p-6 flex flex-col items-center justify-center text-center shadow-xl cursor-pointer`}
             >
-              <div className="text-4xl md:text-6xl mb-4">{photo.emoji}</div>
-              <p className="text-white font-semibold text-sm md:text-base">
+              <div className="text-4xl md:text-6xl mb-2 md:mb-4">
+                {photo.emoji}
+              </div>
+              <p className="text-white font-semibold text-xs md:text-base">
                 {photo.caption}
               </p>
             </motion.div>
@@ -350,7 +356,7 @@ const GallerySection = () => {
         <motion.p
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
-          className="text-center text-gray-500 mt-8 italic"
+          className="text-center text-gray-500 mt-8 italic text-sm"
         >
           Replace these with your actual photos! 📷
         </motion.p>
@@ -361,23 +367,23 @@ const GallerySection = () => {
 
 const LetterSection = () => {
   return (
-    <section className="min-h-screen snap-start flex items-center justify-center p-8">
+    <section className="min-h-screen snap-start flex items-center justify-center p-4 md:p-8">
       <motion.div
         initial={{ opacity: 0, rotateY: -90 }}
         whileInView={{ opacity: 1, rotateY: 0 }}
         transition={{ duration: 1 }}
         viewport={{ once: true }}
-        className="max-w-2xl w-full bg-linear-to-br from-white/40 to-white/20 backdrop-blur-xl p-8 md:p-12 rounded-3xl border border-white/30 shadow-2xl"
+        className="max-w-2xl w-full bg-linear-to-br from-white/40 to-white/20 backdrop-blur-xl p-6 md:p-12 rounded-3xl border border-white/30 shadow-2xl"
       >
         <motion.div
           initial={{ scale: 0 }}
           whileInView={{ scale: 1 }}
-          className="text-6xl text-center mb-8"
+          className="text-5xl md:text-6xl text-center mb-6 md:mb-8"
         >
           💌
         </motion.div>
 
-        <div className="space-y-6 text-gray-700 leading-relaxed text-sm md:text-base">
+        <div className="space-y-4 md:space-y-6 text-gray-700 leading-relaxed text-sm md:text-base">
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -423,12 +429,12 @@ const LetterSection = () => {
 
 const FinalSection = () => {
   return (
-    <section className="min-h-screen snap-start flex items-center justify-center p-8">
+    <section className="min-h-screen snap-start flex items-center justify-center p-4 md:p-8">
       <motion.div
         initial={{ opacity: 0, scale: 0.5 }}
         whileInView={{ opacity: 1, scale: 1 }}
         transition={{ duration: 1 }}
-        className="text-center space-y-8"
+        className="text-center space-y-6 md:space-y-8"
       >
         <motion.div
           animate={{
@@ -436,12 +442,12 @@ const FinalSection = () => {
             rotate: [0, 360],
           }}
           transition={{ duration: 3, repeat: Infinity }}
-          className="text-9xl"
+          className="text-7xl md:text-9xl"
         >
           💖
         </motion.div>
 
-        <h2 className="text-4xl md:text-6xl font-black bg-linear-to-r from-pink-500 via-rose-500 to-purple-500 bg-clip-text text-transparent">
+        <h2 className="text-4xl md:text-6xl font-black bg-linear-to-r from-pink-500 via-rose-500 to-purple-500 bg-clip-text text-transparent px-4">
           Happy 1st Anniversary!
         </h2>
 
@@ -453,17 +459,22 @@ const FinalSection = () => {
   );
 };
 
-// Fixed: Added useMemo to prevent re-render crashing
+// CRITICAL FIX: Pre-generate ALL random values including emoji
+const generateParticles = () => {
+  const emojis = ["✨", "💕", "💖", "🌹", "💝"];
+  return Array.from({ length: 20 }).map((_, i) => ({
+    id: i,
+    x: Math.random() * 100,
+    delay: Math.random() * 5,
+    duration: Math.random() * 10 + 15,
+    size: Math.random() * 20 + 10,
+    emoji: emojis[Math.floor(Math.random() * emojis.length)],
+  }));
+};
+
 const FloatingParticles = () => {
-  const particles = useMemo(() => {
-    return Array.from({ length: 20 }).map((_, i) => ({
-      id: i,
-      x: Math.random() * 100,
-      delay: Math.random() * 5,
-      duration: Math.random() * 10 + 15,
-      size: Math.random() * 20 + 10,
-    }));
-  }, []); // Run ONCE on mount
+  // Generate particles ONCE with all values pre-calculated
+  const particles = useMemo(() => generateParticles(), []);
 
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
@@ -484,7 +495,7 @@ const FloatingParticles = () => {
           className="absolute"
           style={{ fontSize: `${p.size}px` }}
         >
-          {["✨", "💕", "💖", "🌹", "💝"][Math.floor(Math.random() * 5)]}
+          {p.emoji}
         </motion.div>
       ))}
     </div>

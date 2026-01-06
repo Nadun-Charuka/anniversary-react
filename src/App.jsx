@@ -1,130 +1,130 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import {
-  motion,
-  AnimatePresence,
-  useScroll,
-  useTransform,
-} from "framer-motion";
 
-const START_DATE = "2025-01-03"; // Change to your actual date
+const START_DATE = "2025-01-03";
 
 const App = () => {
   const [unlocked, setUnlocked] = useState(false);
+  const [isLowEnd, setIsLowEnd] = useState(false);
+
+  useEffect(() => {
+    // Detect low-end device
+    const cores = navigator.hardwareConcurrency || 2;
+    const memory = navigator.deviceMemory || 4;
+    setIsLowEnd(cores <= 4 || memory <= 4);
+  }, []);
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-pink-50 via-rose-50 to-purple-50 overflow-hidden text-slate-800">
-      <AnimatePresence mode="wait">
-        {!unlocked ? (
-          <LockScreen key="lock" onUnlock={() => setUnlocked(true)} />
-        ) : (
-          <MainExperience key="main" />
-        )}
-      </AnimatePresence>
-
-      <FloatingParticles />
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-rose-50 to-purple-50 overflow-hidden text-slate-800">
+      {!unlocked ? (
+        <LockScreen onUnlock={() => setUnlocked(true)} />
+      ) : (
+        <MainExperience isLowEnd={isLowEnd} />
+      )}
+      {!isLowEnd && <FloatingParticles />}
     </div>
   );
 };
 
-// 🔒 LOCK SCREEN with Puzzle
 const LockScreen = ({ onUnlock }) => {
   const [hearts, setHearts] = useState([false, false, false, false]);
+  const allActive = hearts.every((h) => h);
 
-  // Calculate if all hearts are active
-  const allHeartsActive = hearts.every((h) => h);
-
-  // Use effect only for the unlock timeout
   useEffect(() => {
-    if (allHeartsActive) {
-      const timer = setTimeout(() => onUnlock(), 2000);
+    if (allActive) {
+      const timer = setTimeout(onUnlock, 1500);
       return () => clearTimeout(timer);
     }
-  }, [allHeartsActive, onUnlock]);
+  }, [allActive, onUnlock]);
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 1.2, filter: "blur(20px)" }}
-      className="min-h-dvh flex flex-col items-center justify-center p-8 relative z-20"
-    >
-      <motion.div
-        animate={{
-          background: [
-            "radial-gradient(circle at 20% 50%, rgba(236, 72, 153, 0.3) 0%, transparent 50%)",
-            "radial-gradient(circle at 80% 50%, rgba(168, 85, 247, 0.3) 0%, transparent 50%)",
-            "radial-gradient(circle at 50% 80%, rgba(236, 72, 153, 0.3) 0%, transparent 50%)",
-          ],
-        }}
-        transition={{ duration: 8, repeat: Infinity }}
-        className="absolute inset-0"
-      />
+    <div className="lock-screen min-h-screen flex flex-col items-center justify-center p-8 relative">
+      <div className="animated-bg" />
 
-      <div className="relative z-10 text-center space-y-8">
-        <motion.div
-          initial={{ scale: 0, rotate: -180 }}
-          animate={{ scale: 1, rotate: 0 }}
-          transition={{ type: "spring", duration: 1 }}
-        >
-          <h1 className="text-5xl md:text-7xl font-bold bg-linear-to-r from-pink-500 via-rose-500 to-purple-500 bg-clip-text text-transparent mb-4">
+      <div className="relative z-10 text-center space-y-8 lock-content">
+        <div>
+          <h1 className="text-5xl md:text-7xl font-bold gradient-text mb-4">
             Hey Nathasha ✨
           </h1>
           <p className="text-rose-400 text-lg">Unlock your surprise...</p>
-        </motion.div>
+        </div>
 
-        {!allHeartsActive ? (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="space-y-4"
-          >
+        {!allActive ? (
+          <div className="space-y-4 fade-in-up">
             <p className="text-rose-600 font-medium">
               Tap all the hearts to unlock 💝
             </p>
             <div className="flex gap-4 justify-center">
               {hearts.map((active, i) => (
-                <motion.button
+                <button
                   key={i}
-                  whileHover={{ scale: 1.2, rotate: 10 }}
-                  whileTap={{ scale: 0.8 }}
                   onClick={() =>
                     setHearts((prev) => {
-                      const newHearts = [...prev];
-                      newHearts[i] = true;
-                      return newHearts;
+                      const n = [...prev];
+                      n[i] = true;
+                      return n;
                     })
                   }
-                  className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center text-4xl transition-all duration-300 ${
-                    active
-                      ? "bg-linear-to-br from-pink-400 to-rose-500 shadow-lg shadow-pink-300"
-                      : "bg-white/50 backdrop-blur-sm border-2 border-rose-200"
-                  }`}
+                  className={`heart-btn ${active ? "active" : ""}`}
+                  style={{ animationDelay: `${i * 0.1}s` }}
                 >
                   {active ? "❤️" : "🤍"}
-                </motion.button>
+                </button>
               ))}
             </div>
-          </motion.div>
+          </div>
         ) : (
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="text-3xl font-bold text-rose-500"
-          >
+          <div className="text-3xl font-bold text-rose-500 scale-in">
             Opening... 💕
-          </motion.div>
+          </div>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 };
 
-// 🎨 MAIN EXPERIENCE
-const MainExperience = () => {
+const MainExperience = ({ isLowEnd }) => {
   const containerRef = useRef(null);
-  const { scrollYProgress } = useScroll({ container: containerRef });
+  const [scrollProgress, setScrollProgress] = useState(0);
 
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const progress = el.scrollTop / (el.scrollHeight - el.clientHeight);
+          setScrollProgress(progress);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      className="h-screen w-full overflow-y-scroll overflow-x-hidden snap-y snap-mandatory scroll-smooth main-container"
+      style={{
+        WebkitOverflowScrolling: "touch",
+        overscrollBehavior: "contain",
+      }}
+    >
+      <HeroSection scrollProgress={scrollProgress} isLowEnd={isLowEnd} />
+      <TimelineSection isLowEnd={isLowEnd} />
+      <GallerySection isLowEnd={isLowEnd} />
+      <LetterSection isLowEnd={isLowEnd} />
+      <FinalSection />
+    </div>
+  );
+};
+
+const HeroSection = ({ scrollProgress, isLowEnd }) => {
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
     hours: 0,
@@ -133,74 +133,46 @@ const MainExperience = () => {
   });
 
   useEffect(() => {
-    const timer = setInterval(() => {
+    const updateTime = () => {
       const start = new Date(START_DATE);
       const now = new Date();
-      const difference = now - start;
+      const diff = now - start;
 
       setTimeLeft({
-        days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-        minutes: Math.floor((difference / 1000 / 60) % 60),
-        seconds: Math.floor((difference / 1000) % 60),
+        days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+        hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+        minutes: Math.floor((diff / 1000 / 60) % 60),
+        seconds: Math.floor((diff / 1000) % 60),
       });
-    }, 1000);
+    };
 
+    updateTime();
+    const timer = setInterval(updateTime, 1000);
     return () => clearInterval(timer);
   }, []);
 
+  const opacity = Math.max(0, 1 - scrollProgress * 5);
+  const scale = Math.max(0.8, 1 - scrollProgress * 1);
+
   return (
-    <div
-      ref={containerRef}
-      className="h-dvh w-full overflow-y-scroll overflow-x-hidden snap-y snap-mandatory relative z-10 scroll-smooth"
+    <section
+      className="min-h-screen snap-start flex flex-col items-center justify-center p-4 md:p-8 relative overflow-hidden fade-in"
       style={{
-        // CRITICAL FIX: Prevent elastic scrolling on iOS
-        WebkitOverflowScrolling: "touch",
-        overscrollBehavior: "contain",
+        opacity,
+        transform: `scale(${scale})`,
+        transition: "opacity 0.1s, transform 0.1s",
       }}
     >
-      <HeroSection timeLeft={timeLeft} scrollYProgress={scrollYProgress} />
-      <TimelineSection />
-      <GallerySection />
-      <LetterSection />
-      <FinalSection />
-    </div>
-  );
-};
-
-const HeroSection = ({ timeLeft, scrollYProgress }) => {
-  const opacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
-  const scale = useTransform(scrollYProgress, [0, 0.2], [1, 0.8]);
-
-  return (
-    <motion.section
-      style={{ opacity, scale }}
-      className="min-h-dvh w-full snap-start flex flex-col items-center justify-center p-4 md:p-8 relative overflow-hidden"
-    >
-      <motion.div
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1 }}
-        className="text-center space-y-6 md:space-y-8 max-w-full"
-      >
-        <motion.h2
-          animate={{
-            backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
-          }}
-          transition={{ duration: 5, repeat: Infinity }}
-          className="text-5xl md:text-8xl font-black bg-linear-to-r from-pink-500 via-rose-500 to-purple-500 bg-clip-text text-transparent bg-size-[200%_auto] leading-tight px-2"
-        >
+      <div className="text-center space-y-6 md:space-y-8 max-w-full">
+        <h2 className="text-5xl md:text-8xl font-black gradient-text-animated px-2 leading-tight">
           Nadun & Nathasha
-        </motion.h2>
+        </h2>
 
         <p className="text-xl md:text-2xl text-rose-400 font-light">
           Forever & Always
         </p>
 
-        <motion.div
-          whileHover={{ scale: 1.05 }}
-          className="bg-white/20 backdrop-blur-xl p-4 md:p-8 rounded-2xl md:rounded-3xl border border-white/30 shadow-2xl max-w-[90%] md:max-w-lg mx-auto"
-        >
+        <div className={`timer-card ${!isLowEnd ? "glass" : "glass-light"}`}>
           <p className="text-xs md:text-sm uppercase tracking-widest text-rose-400 mb-4 md:mb-6 font-semibold">
             Together for
           </p>
@@ -210,98 +182,92 @@ const HeroSection = ({ timeLeft, scrollYProgress }) => {
             <TimerBox val={timeLeft.minutes} label="Mins" />
             <TimerBox val={timeLeft.seconds} label="Secs" />
           </div>
-        </motion.div>
+        </div>
 
-        <motion.p
-          animate={{ y: [0, 10, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className="text-rose-300 text-xs md:text-sm pt-4"
-        >
+        <p className="text-rose-300 text-xs md:text-sm pt-4 bounce">
           Scroll to explore our journey ↓
-        </motion.p>
-      </motion.div>
-    </motion.section>
+        </p>
+      </div>
+    </section>
   );
 };
 
 const TimerBox = ({ val, label }) => (
-  <motion.div
-    whileHover={{ scale: 1.1 }}
-    className="flex flex-col items-center"
-  >
-    <motion.span
-      key={val}
-      initial={{ scale: 1.5, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      className="text-2xl md:text-5xl font-black text-transparent bg-linear-to-br from-pink-500 to-purple-500 bg-clip-text tabular-nums"
-    >
+  <div className="timer-box">
+    <span className="timer-value" key={val}>
       {val}
-    </motion.span>
-    <span className="text-[10px] md:text-xs text-rose-400 uppercase tracking-wider mt-1">
-      {label}
     </span>
-  </motion.div>
+    <span className="timer-label">{label}</span>
+  </div>
 );
 
-const TimelineSection = () => {
+const TimelineSection = ({ isLowEnd }) => {
+  const [visible, setVisible] = useState({});
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setVisible((prev) => ({
+              ...prev,
+              [entry.target.dataset.index]: true,
+            }));
+          }
+        });
+      },
+      { threshold: 0.2, rootMargin: "-50px" }
+    );
+
+    const items = ref.current?.querySelectorAll("[data-index]");
+    items?.forEach((item) => observer.observe(item));
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <section className="min-h-screen snap-start flex items-center justify-center p-4 md:p-8 py-20">
+    <section
+      ref={ref}
+      className="min-h-screen snap-start flex items-center justify-center p-4 md:p-8 py-20"
+    >
       <div className="max-w-4xl w-full space-y-8 md:space-y-12">
-        <motion.h3
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          className="text-4xl md:text-5xl font-bold text-center bg-linear-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent mb-8 md:mb-16"
-        >
+        <h3 className="text-4xl md:text-5xl font-bold text-center gradient-text mb-8 md:mb-16">
           Our Journey ✨
-        </motion.h3>
+        </h3>
 
         {memories.map((memory, index) => (
-          <TimelineCard key={index} memory={memory} index={index} />
+          <div
+            key={index}
+            data-index={index}
+            className={`timeline-card ${visible[index] ? "visible" : ""} ${
+              index % 2 === 0 ? "left" : "right"
+            }`}
+          >
+            <div className="timeline-icon">{memory.icon}</div>
+            <div
+              className={`timeline-content ${
+                !isLowEnd ? "glass" : "glass-light"
+              }`}
+            >
+              <h4 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">
+                {memory.title}
+              </h4>
+              <p className="text-rose-500 font-medium mb-2 text-sm md:text-base">
+                {memory.date}
+              </p>
+              <p className="text-gray-600 text-sm md:text-base">
+                {memory.description}
+              </p>
+            </div>
+          </div>
         ))}
       </div>
     </section>
   );
 };
 
-const TimelineCard = ({ memory, index }) => {
-  const isEven = index % 2 === 0;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: isEven ? -100 : 100 }}
-      whileInView={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.6, delay: index * 0.1 }}
-      viewport={{ once: true, margin: "-100px" }}
-      className={`flex items-center gap-4 md:gap-6 ${
-        isEven ? "flex-col md:flex-row" : "flex-col md:flex-row-reverse"
-      }`}
-    >
-      <motion.div
-        whileHover={{ scale: 1.1, rotate: 5 }}
-        className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-linear-to-br from-pink-400 to-purple-500 flex items-center justify-center text-4xl md:text-5xl shadow-xl shrink-0"
-      >
-        {memory.icon}
-      </motion.div>
-
-      <motion.div
-        whileHover={{ scale: 1.02 }}
-        className="flex-1 w-full bg-white/30 backdrop-blur-xl p-4 md:p-6 rounded-2xl border border-white/30 shadow-lg"
-      >
-        <h4 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">
-          {memory.title}
-        </h4>
-        <p className="text-rose-500 font-medium mb-2 text-sm md:text-base">
-          {memory.date}
-        </p>
-        <p className="text-gray-600 text-sm md:text-base">
-          {memory.description}
-        </p>
-      </motion.div>
-    </motion.div>
-  );
-};
-
-const GallerySection = () => {
+const GallerySection = ({ isLowEnd }) => {
   const photos = [
     {
       emoji: "📸",
@@ -321,27 +287,49 @@ const GallerySection = () => {
     { emoji: "🍝", caption: "Dinner Date", color: "from-red-400 to-rose-500" },
   ];
 
+  const [visible, setVisible] = useState({});
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setVisible((prev) => ({
+              ...prev,
+              [entry.target.dataset.index]: true,
+            }));
+          }
+        });
+      },
+      { threshold: 0.3 }
+    );
+
+    const items = ref.current?.querySelectorAll("[data-index]");
+    items?.forEach((item) => observer.observe(item));
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <section className="min-h-screen snap-start flex items-center justify-center p-4 md:p-8 py-20">
       <div className="max-w-5xl w-full">
-        <motion.h3
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          className="text-4xl md:text-5xl font-bold text-center bg-linear-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent mb-8 md:mb-16"
-        >
+        <h3 className="text-4xl md:text-5xl font-bold text-center gradient-text mb-8 md:mb-16">
           Our Memories 💕
-        </motion.h3>
+        </h3>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+        <div
+          ref={ref}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6"
+        >
           {photos.map((photo, index) => (
-            <motion.div
+            <div
               key={index}
-              initial={{ opacity: 0, scale: 0 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              whileHover={{ scale: 1.05, rotate: 5 }}
-              transition={{ delay: index * 0.1 }}
-              viewport={{ once: true }}
-              className={`aspect-square rounded-2xl bg-linear-to-br ${photo.color} p-4 md:p-6 flex flex-col items-center justify-center text-center shadow-xl cursor-pointer`}
+              data-index={index}
+              className={`gallery-card bg-gradient-to-br ${photo.color} ${
+                visible[index] ? "visible" : ""
+              }`}
+              style={{ animationDelay: `${index * 0.1}s` }}
             >
               <div className="text-4xl md:text-6xl mb-2 md:mb-4">
                 {photo.emoji}
@@ -349,154 +337,142 @@ const GallerySection = () => {
               <p className="text-white font-semibold text-xs md:text-base">
                 {photo.caption}
               </p>
-            </motion.div>
+            </div>
           ))}
         </div>
 
-        <motion.p
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          className="text-center text-gray-500 mt-8 italic text-sm"
-        >
+        <p className="text-center text-gray-500 mt-8 italic text-sm fade-in">
           Replace these with your actual photos! 📷
-        </motion.p>
+        </p>
       </div>
     </section>
   );
 };
 
-const LetterSection = () => {
+const LetterSection = ({ isLowEnd }) => {
+  const [visible, setVisible] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setVisible(true);
+      },
+      { threshold: 0.3 }
+    );
+
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <section className="min-h-screen snap-start flex items-center justify-center p-4 md:p-8">
-      <motion.div
-        initial={{ opacity: 0, rotateY: -90 }}
-        whileInView={{ opacity: 1, rotateY: 0 }}
-        transition={{ duration: 1 }}
-        viewport={{ once: true }}
-        className="max-w-2xl w-full bg-linear-to-br from-white/40 to-white/20 backdrop-blur-xl p-6 md:p-12 rounded-3xl border border-white/30 shadow-2xl"
+      <div
+        ref={ref}
+        className={`letter-card ${!isLowEnd ? "glass" : "glass-light"} ${
+          visible ? "visible" : ""
+        }`}
       >
-        <motion.div
-          initial={{ scale: 0 }}
-          whileInView={{ scale: 1 }}
-          className="text-5xl md:text-6xl text-center mb-6 md:mb-8"
-        >
+        <div className="text-5xl md:text-6xl text-center mb-6 md:mb-8 scale-in">
           💌
-        </motion.div>
+        </div>
 
         <div className="space-y-4 md:space-y-6 text-gray-700 leading-relaxed text-sm md:text-base">
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            Dear Nathasha,
-          </motion.p>
+          <p className="letter-line">Dear Nathasha,</p>
 
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-          >
+          <p className="letter-line" style={{ animationDelay: "0.2s" }}>
             One year ago, you walked into my life and everything changed. Every
             moment with you feels like magic, and I still can't believe how
             lucky I am to call you mine.
-          </motion.p>
+          </p>
 
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-          >
+          <p className="letter-line" style={{ animationDelay: "0.4s" }}>
             Thank you for all the laughter, adventures, and endless love. Here's
             to many more years of creating beautiful memories together.
-          </motion.p>
+          </p>
 
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
-            className="text-right font-semibold text-rose-600"
+          <p
+            className="letter-line text-right font-semibold text-rose-600"
+            style={{ animationDelay: "0.6s" }}
           >
             Forever yours,
             <br />
             Nadun ❤️
-          </motion.p>
+          </p>
         </div>
-      </motion.div>
+      </div>
     </section>
   );
 };
 
 const FinalSection = () => {
-  return (
-    <section className="min-h-screen snap-start flex items-center justify-center p-4 md:p-8">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.5 }}
-        whileInView={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 1 }}
-        className="text-center space-y-6 md:space-y-8"
-      >
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            rotate: [0, 360],
-          }}
-          transition={{ duration: 3, repeat: Infinity }}
-          className="text-7xl md:text-9xl"
-        >
-          💖
-        </motion.div>
+  const [visible, setVisible] = useState(false);
+  const ref = useRef(null);
 
-        <h2 className="text-4xl md:text-6xl font-black bg-linear-to-r from-pink-500 via-rose-500 to-purple-500 bg-clip-text text-transparent px-4">
-          Happy 1st Anniversary!
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setVisible(true);
+      },
+      { threshold: 0.5 }
+    );
+
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <section
+      ref={ref}
+      className="min-h-screen snap-start flex items-center justify-center p-4 md:p-8"
+    >
+      <div
+        className={`text-center space-y-6 md:space-y-8 ${
+          visible ? "final-visible" : ""
+        }`}
+      >
+        <div className="final-heart">💖</div>
+
+        <h2 className="text-4xl md:text-6xl font-black gradient-text px-4">
+          Happy 1st Anniversary My love!
         </h2>
 
         <p className="text-xl md:text-2xl text-rose-400">
           To many more adventures together 🌹
         </p>
-      </motion.div>
+      </div>
     </section>
   );
 };
 
-// CRITICAL FIX: Pre-generate ALL random values including emoji
-const generateParticles = () => {
-  const emojis = ["✨", "💕", "💖", "🌹", "💝"];
-  return Array.from({ length: 20 }).map((_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    delay: Math.random() * 5,
-    duration: Math.random() * 10 + 15,
-    size: Math.random() * 20 + 10,
-    emoji: emojis[Math.floor(Math.random() * emojis.length)],
-  }));
-};
-
 const FloatingParticles = () => {
-  // Generate particles ONCE with all values pre-calculated
-  const particles = useMemo(() => generateParticles(), []);
+  const particles = useMemo(
+    () =>
+      Array.from({ length: 10 }).map((_, i) => ({
+        id: i,
+        x: Math.random() * 100,
+        delay: Math.random() * 5,
+        duration: Math.random() * 5 + 15,
+      })),
+    []
+  );
+
+  const emojis = ["✨", "💕", "💖", "🌹", "💝"];
 
   return (
     <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
       {particles.map((p) => (
-        <motion.div
+        <div
           key={p.id}
-          initial={{ y: "100vh", x: `${p.x}vw`, opacity: 0 }}
-          animate={{
-            y: "-10vh",
-            opacity: [0, 0.6, 0],
+          className="particle"
+          style={{
+            left: `${p.x}%`,
+            animationDelay: `${p.delay}s`,
+            animationDuration: `${p.duration}s`,
           }}
-          transition={{
-            duration: p.duration,
-            repeat: Infinity,
-            delay: p.delay,
-            ease: "linear",
-          }}
-          className="absolute"
-          style={{ fontSize: `${p.size}px` }}
         >
-          {p.emoji}
-        </motion.div>
+          {emojis[p.id % emojis.length]}
+        </div>
       ))}
     </div>
   );
@@ -532,3 +508,416 @@ const memories = [
 ];
 
 export default App;
+
+// Add styles to document head
+if (typeof document !== "undefined") {
+  const style = document.createElement("style");
+  style.textContent = `
+    @keyframes float {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-20px) rotate(5deg); }
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(0.5); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes slideInLeft {
+      from { opacity: 0; transform: translateX(-100px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(100px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    @keyframes gradientShift {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+
+    @keyframes particleFloat {
+      0% { transform: translateY(100vh) translateX(0); opacity: 0; }
+      10% { opacity: 0.6; }
+      90% { opacity: 0.6; }
+      100% { transform: translateY(-10vh) translateX(20px); opacity: 0; }
+    }
+
+    @keyframes heartBeat {
+      0%, 100% { transform: scale(1); }
+      25% { transform: scale(1.2) rotate(5deg); }
+      75% { transform: scale(1.2) rotate(-5deg); }
+    }
+
+    @keyframes bgMove {
+      0% { background-position: 20% 50%; }
+      50% { background-position: 80% 50%; }
+      100% { background-position: 20% 50%; }
+    }
+
+    .gradient-text {
+      background: linear-gradient(to right, #ec4899, #f43f5e, #a855f7);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .gradient-text-animated {
+      background: linear-gradient(to right, #ec4899, #f43f5e, #a855f7, #ec4899);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: gradientShift 5s ease infinite;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .glass-light {
+      background: rgba(255, 255, 255, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+
+    .lock-screen {
+      animation: fadeInUp 0.6s ease-out;
+    }
+
+    .lock-content > * {
+      animation: fadeInUp 0.8s ease-out backwards;
+    }
+
+    .lock-content > *:nth-child(1) { animation-delay: 0.1s; }
+    .lock-content > *:nth-child(2) { animation-delay: 0.3s; }
+
+    .animated-bg {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 20% 50%, rgba(236, 72, 153, 0.3) 0%, transparent 50%);
+      animation: bgMove 8s ease-in-out infinite;
+    }
+
+    .heart-btn {
+      width: 4rem;
+      height: 4rem;
+      border-radius: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      background: rgba(255, 255, 255, 0.5);
+      border: 2px solid #fecdd3;
+      cursor: pointer;
+      animation: scaleIn 0.5s ease-out backwards;
+    }
+
+    @media (min-width: 768px) {
+      .heart-btn {
+        width: 5rem;
+        height: 5rem;
+      }
+    }
+
+    .heart-btn:hover {
+      transform: scale(1.15) rotate(10deg);
+    }
+
+    .heart-btn:active {
+      transform: scale(0.85);
+    }
+
+    .heart-btn.active {
+      background: linear-gradient(to bottom right, #f472b6, #f43f5e);
+      box-shadow: 0 10px 25px rgba(236, 72, 153, 0.4);
+    }
+
+    .fade-in {
+      animation: fadeInUp 1s ease-out;
+    }
+
+    .fade-in-up {
+      animation: fadeInUp 0.6s ease-out 0.5s backwards;
+    }
+
+    .scale-in {
+      animation: scaleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .bounce {
+      animation: bounce 2s ease-in-out infinite;
+    }
+
+    .timer-card {
+      padding: 2rem;
+      border-radius: 1.5rem;
+      max-width: 90%;
+      margin: 0 auto;
+      transition: transform 0.3s ease;
+    }
+
+    @media (min-width: 768px) {
+      .timer-card {
+        padding: 2rem;
+        border-radius: 1.5rem;
+        max-width: 32rem;
+      }
+    }
+
+    .timer-card:hover {
+      transform: scale(1.02);
+    }
+
+    .timer-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: transform 0.2s ease;
+    }
+
+    .timer-box:hover {
+      transform: scale(1.1);
+    }
+
+    .timer-value {
+      font-size: 1.5rem;
+      font-weight: 900;
+      background: linear-gradient(to bottom right, #ec4899, #a855f7);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      font-variant-numeric: tabular-nums;
+      animation: scaleIn 0.3s ease-out;
+    }
+
+    @media (min-width: 768px) {
+      .timer-value {
+        font-size: 3rem;
+      }
+    }
+
+    .timer-label {
+      font-size: 0.625rem;
+      color: #fb7185;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 0.25rem;
+    }
+
+    @media (min-width: 768px) {
+      .timer-label {
+        font-size: 0.75rem;
+      }
+    }
+
+    .timeline-card {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      opacity: 0;
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    @media (min-width: 768px) {
+      .timeline-card {
+        gap: 1.5rem;
+      }
+    }
+
+    .timeline-card.left {
+      flex-direction: column;
+      transform: translateX(-100px);
+    }
+
+    .timeline-card.right {
+      flex-direction: column;
+      transform: translateX(100px);
+    }
+
+    @media (min-width: 768px) {
+      .timeline-card.left {
+        flex-direction: row;
+      }
+      .timeline-card.right {
+        flex-direction: row-reverse;
+      }
+    }
+
+    .timeline-card.visible {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .timeline-icon {
+      width: 5rem;
+      height: 5rem;
+      border-radius: 1rem;
+      background: linear-gradient(to bottom right, #f472b6, #a855f7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      flex-shrink: 0;
+      transition: transform 0.3s ease;
+    }
+
+    @media (min-width: 768px) {
+      .timeline-icon {
+        width: 6rem;
+        height: 6rem;
+        font-size: 3rem;
+      }
+    }
+
+    .timeline-icon:hover {
+      transform: scale(1.1) rotate(5deg);
+    }
+
+    .timeline-content {
+      flex: 1;
+      width: 100%;
+      padding: 1rem;
+      border-radius: 1rem;
+      transition: transform 0.3s ease;
+    }
+
+    @media (min-width: 768px) {
+      .timeline-content {
+        padding: 1.5rem;
+      }
+    }
+
+    .timeline-content:hover {
+      transform: scale(1.02);
+    }
+
+    .gallery-card {
+      aspect-ratio: 1;
+      border-radius: 1rem;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      cursor: pointer;
+      opacity: 0;
+      transform: scale(0);
+      transition: transform 0.3s ease, opacity 0.6s ease;
+    }
+
+    @media (min-width: 768px) {
+      .gallery-card {
+        padding: 1.5rem;
+      }
+    }
+
+    .gallery-card.visible {
+      animation: scaleIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+
+    .gallery-card:hover {
+      transform: scale(1.05) rotate(5deg);
+    }
+
+    .letter-card {
+      max-width: 42rem;
+      width: 100%;
+      padding: 1.5rem;
+      border-radius: 1.5rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+      opacity: 0;
+      transform: rotateY(-90deg);
+      transition: all 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    @media (min-width: 768px) {
+      .letter-card {
+        padding: 3rem;
+      }
+    }
+
+    .letter-card.visible {
+      opacity: 1;
+      transform: rotateY(0);
+    }
+
+    .letter-line {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    .letter-card.visible .letter-line {
+      animation: fadeInUp 0.8s ease-out forwards;
+    }
+
+    .letter-card.visible .letter-line:nth-child(1) { animation-delay: 0.2s; }
+    .letter-card.visible .letter-line:nth-child(2) { animation-delay: 0.4s; }
+    .letter-card.visible .letter-line:nth-child(3) { animation-delay: 0.6s; }
+    .letter-card.visible .letter-line:nth-child(4) { animation-delay: 0.8s; }
+
+    .final-visible {
+      animation: scaleIn 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .final-heart {
+      font-size: 4.5rem;
+      animation: heartBeat 3s ease-in-out infinite;
+    }
+
+    @media (min-width: 768px) {
+      .final-heart {
+        font-size: 6rem;
+      }
+    }
+
+    .particle {
+      position: absolute;
+      font-size: 1.5rem;
+      animation: particleFloat linear infinite;
+      will-change: transform, opacity;
+    }
+
+    .main-container {
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Optimize scrollbar for better performance */
+    .main-container::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .main-container::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .main-container::-webkit-scrollbar-thumb {
+      background: rgba(236, 72, 153, 0.3);
+      border-radius: 4px;
+    }
+
+    .main-container::-webkit-scrollbar-thumb:hover {
+      background: rgba(236, 72, 153, 0.5);
+    }
+  `;
+  document.head.appendChild(style);
+}

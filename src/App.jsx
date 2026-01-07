@@ -1,28 +1,93 @@
-import { useState, useEffect, useRef, memo } from "react";
-import "./animations.css";
+import { useState, useEffect, useRef, memo, useMemo } from "react";
+import {
+  motion,
+  useScroll,
+  useTransform,
+  useSpring,
+  useInView,
+  AnimatePresence,
+} from "framer-motion";
 
 const START_DATE = "2025-01-03";
 
+// ============================================================================
+// ANIMATION VARIANTS - Reusable configurations
+// ============================================================================
+const fadeInUp = {
+  hidden: { opacity: 0, y: 30 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.8 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    transition: {
+      duration: 0.5,
+      ease: [0.34, 1.56, 0.64, 1],
+    },
+  },
+};
+
+const slideInLeft = {
+  hidden: { opacity: 0, x: -80 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+
+const slideInRight = {
+  hidden: { opacity: 0, x: 80 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
+  },
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.2,
+    },
+  },
+};
+
+// ============================================================================
+// MAIN APP
+// ============================================================================
 const App = () => {
   const [unlocked, setUnlocked] = useState(false);
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-pink-50 via-rose-50 to-purple-50 overflow-hidden text-slate-800">
-      {!unlocked ? (
-        <LockScreen onUnlock={() => setUnlocked(true)} />
-      ) : (
-        <MainExperience />
-      )}
+    <div className="min-h-screen bg-linear-to-br from-pink-50 via-rose-50 to-purple-50 overflow-hidden">
+      <AnimatePresence mode="wait">
+        {!unlocked ? (
+          <LockScreen key="lock" onUnlock={() => setUnlocked(true)} />
+        ) : (
+          <MainExperience key="main" />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
 // ============================================================================
-// LOCK SCREEN
+// LOCK SCREEN COMPONENT
 // ============================================================================
 const LockScreen = memo(({ onUnlock }) => {
   const [hearts, setHearts] = useState([false, false, false, false]);
-  const allActive = hearts.every((h) => h);
+  const allActive = useMemo(() => hearts.every((h) => h), [hearts]);
 
   useEffect(() => {
     if (allActive) {
@@ -40,43 +105,99 @@ const LockScreen = memo(({ onUnlock }) => {
   };
 
   return (
-    <div className="lock-screen">
-      <div className="animated-background" />
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, scale: 1.1, filter: "blur(10px)" }}
+      transition={{ duration: 0.6 }}
+      className="min-h-screen flex flex-col items-center justify-center p-8 relative"
+    >
+      {/* Animated Background Gradient */}
+      <motion.div
+        animate={{
+          background: [
+            "radial-gradient(circle at 20% 50%, rgba(236, 72, 153, 0.3) 0%, transparent 50%)",
+            "radial-gradient(circle at 80% 50%, rgba(168, 85, 247, 0.3) 0%, transparent 50%)",
+            "radial-gradient(circle at 50% 80%, rgba(236, 72, 153, 0.3) 0%, transparent 50%)",
+          ],
+        }}
+        transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+        className="absolute inset-0 pointer-events-none"
+      />
 
-      <div className="lock-content">
-        <div className="lock-header">
-          <h1 className="text-5xl md:text-7xl font-bold gradient-text-shimmer mb-4">
+      <motion.div
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+        className="relative z-10 text-center space-y-8"
+      >
+        <motion.div variants={fadeInUp}>
+          <motion.h1
+            className="text-5xl md:text-7xl font-bold mb-4 bg-linear-to-r from-pink-500 via-rose-500 to-purple-500 bg-clip-text text-transparent"
+            animate={{
+              backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+            }}
+            transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+            style={{ backgroundSize: "200% auto" }}
+          >
             Hey Nathasha ✨
-          </h1>
+          </motion.h1>
           <p className="text-rose-400 text-lg">Unlock your surprise...</p>
-        </div>
+        </motion.div>
 
-        {!allActive ? (
-          <div className="space-y-4 fade-in-delayed">
-            <p className="text-rose-600 font-medium">
-              Tap all the hearts to unlock 💝
-            </p>
-            <div className="flex gap-4 justify-center">
-              {hearts.map((active, i) => (
-                <button
-                  key={i}
-                  onClick={() => toggleHeart(i)}
-                  className={`heart-button ${active ? "active" : ""}`}
-                  style={{ animationDelay: `${i * 0.1}s` }}
-                  disabled={active}
-                >
-                  {active ? "❤️" : "🤍"}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="text-3xl font-bold text-rose-500 scale-bounce">
-            Opening... 💕
-          </div>
-        )}
-      </div>
-    </div>
+        <AnimatePresence mode="wait">
+          {!allActive ? (
+            <motion.div
+              key="hearts"
+              variants={fadeInUp}
+              initial="hidden"
+              animate="visible"
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="space-y-4"
+            >
+              <p className="text-rose-600 font-medium">
+                Tap all the hearts to unlock 💝
+              </p>
+              <div className="flex gap-4 justify-center">
+                {hearts.map((active, i) => (
+                  <motion.button
+                    key={i}
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{
+                      delay: i * 0.1,
+                      type: "spring",
+                      stiffness: 260,
+                      damping: 20,
+                    }}
+                    whileHover={{ scale: 1.15, rotate: 10 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => toggleHeart(i)}
+                    disabled={active}
+                    className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl flex items-center justify-center text-4xl transition-all duration-300 ${
+                      active
+                        ? "bg-linear-to-br from-pink-400 to-rose-500 shadow-lg shadow-pink-300"
+                        : "bg-white/50 backdrop-blur-sm border-2 border-rose-200"
+                    }`}
+                  >
+                    {active ? "❤️" : "🤍"}
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="opening"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="text-3xl font-bold text-rose-500"
+            >
+              Opening... 💕
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </motion.div>
   );
 });
 
@@ -87,48 +208,105 @@ LockScreen.displayName = "LockScreen";
 // ============================================================================
 const MainExperience = () => {
   const containerRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end end"],
+  });
 
   return (
-    <div
+    <motion.div
       ref={containerRef}
-      className="h-screen overflow-y-auto overflow-x-hidden snap-y snap-mandatory scroll-smooth"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="h-screen overflow-y-auto overflow-x-hidden snap-y snap-mandatory"
       style={{
         WebkitOverflowScrolling: "touch",
         overscrollBehavior: "contain",
       }}
     >
-      <HeroSection />
+      <HeroSection scrollYProgress={scrollYProgress} />
       <TimelineSection />
       <GallerySection />
       <LetterSection />
       <FinalSection />
-    </div>
+    </motion.div>
   );
 };
+// ============================================================================
+// HERO SECTION (Refined)
+// ============================================================================
+const HeroSection = memo(({ scrollYProgress }) => {
+  // 1. Text fades out quickly (0 to 20% scroll)
+  const textOpacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
+  const textScale = useTransform(scrollYProgress, [0, 0.2], [1, 0.8]);
 
-// ============================================================================
-// HERO SECTION - Pure CSS Timer
-// ============================================================================
-const HeroSection = memo(() => {
+  // 2. Background fades out slower (0 to 50% scroll) so it doesn't "blink" away
+  const bgOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
+
+  // Smooth springs
+  const smoothTextOpacity = useSpring(textOpacity, {
+    stiffness: 100,
+    damping: 20,
+  });
+  const smoothTextScale = useSpring(textScale, { stiffness: 100, damping: 20 });
+  const smoothBgOpacity = useSpring(bgOpacity, { stiffness: 100, damping: 20 });
+
   return (
-    <section className="min-h-screen snap-start flex flex-col items-center justify-center p-4 md:p-8 relative overflow-hidden hero-section">
-      <div className="text-center space-y-6 md:space-y-8 w-full max-w-4xl px-4">
-        <h2 className="text-5xl md:text-8xl font-black gradient-text-wave leading-tight">
-          Nadun & Nathasha
-        </h2>
+    <section className="min-h-screen snap-start flex flex-col items-center justify-center p-4 md:p-8 relative overflow-hidden">
+      {/* Background Glow Effect - Controlled separately */}
+      <motion.div
+        style={{ opacity: smoothBgOpacity }} // Only fades slightly slower
+        className="absolute inset-0 pointer-events-none"
+        animate={{
+          background: [
+            "radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.15) 0%, transparent 60%)",
+            "radial-gradient(circle at 60% 40%, rgba(168, 85, 247, 0.15) 0%, transparent 60%)",
+            "radial-gradient(circle at 40% 60%, rgba(236, 72, 153, 0.15) 0%, transparent 60%)",
+          ],
+        }}
+        transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+      />
 
-        <p className="text-xl md:text-2xl text-rose-400 font-light pulse-subtle">
+      {/* Content Container - Controlled by Text Opacity */}
+      <motion.div
+        style={{ opacity: smoothTextOpacity, scale: smoothTextScale }}
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+        className="text-center space-y-6 md:space-y-8 max-w-4xl relative z-10"
+      >
+        <motion.h2
+          variants={fadeInUp}
+          className="text-5xl md:text-8xl font-black bg-linear-to-r from-pink-500 via-rose-500 to-purple-500 bg-clip-text text-transparent leading-tight px-2"
+          animate={{
+            backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
+          }}
+          transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+          style={{ backgroundSize: "200% auto" }}
+        >
+          Nadun & Nathasha
+        </motion.h2>
+
+        <motion.p
+          variants={fadeInUp}
+          className="text-xl md:text-2xl text-rose-400 font-light"
+        >
           Forever & Always
-        </p>
+        </motion.p>
 
         <TimerCard />
 
-        <p className="text-rose-300 text-xs md:text-sm pt-4 bounce-slow">
+        <motion.p
+          variants={fadeInUp}
+          animate={{ y: [0, 10, 0] }}
+          transition={{
+            y: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+          }}
+          className="text-rose-300 text-xs md:text-sm pt-4"
+        >
           Scroll to explore our journey ↓
-        </p>
-      </div>
-
-      <div className="hero-glow" />
+        </motion.p>
+      </motion.div>
     </section>
   );
 });
@@ -136,7 +314,7 @@ const HeroSection = memo(() => {
 HeroSection.displayName = "HeroSection";
 
 // ============================================================================
-// TIMER CARD - Optimized with RAF
+// TIMER CARD - Optimized with useRef to prevent re-renders
 // ============================================================================
 const TimerCard = memo(() => {
   const [time, setTime] = useState({
@@ -149,12 +327,11 @@ const TimerCard = memo(() => {
   const lastUpdateRef = useRef(0);
 
   useEffect(() => {
-    const updateTime = () => {
-      const now = Date.now();
-
-      // Only update once per second
-      if (now - lastUpdateRef.current >= 1000) {
+    const updateTime = (timestamp) => {
+      // Only update once per second to prevent excessive re-renders
+      if (timestamp - lastUpdateRef.current >= 1000) {
         const start = new Date(START_DATE).getTime();
+        const now = Date.now();
         const diff = now - start;
 
         setTime({
@@ -164,7 +341,7 @@ const TimerCard = memo(() => {
           seconds: Math.floor((diff / 1000) % 60),
         });
 
-        lastUpdateRef.current = now;
+        lastUpdateRef.current = timestamp;
       }
 
       rafRef.current = requestAnimationFrame(updateTime);
@@ -177,7 +354,11 @@ const TimerCard = memo(() => {
   }, []);
 
   return (
-    <div className="timer-container glass-card">
+    <motion.div
+      variants={scaleIn}
+      whileHover={{ scale: 1.02 }}
+      className="bg-white/20 backdrop-blur-xl p-4 md:p-8 rounded-2xl md:rounded-3xl border border-white/30 shadow-2xl max-w-[90%] md:max-w-lg mx-auto"
+    >
       <p className="text-xs md:text-sm uppercase tracking-widest text-rose-400 mb-4 md:mb-6 font-semibold">
         Together for
       </p>
@@ -187,19 +368,30 @@ const TimerCard = memo(() => {
         <TimerBox val={time.minutes} label="Mins" />
         <TimerBox val={time.seconds} label="Secs" />
       </div>
-    </div>
+    </motion.div>
   );
 });
 
 TimerCard.displayName = "TimerCard";
 
 const TimerBox = memo(({ val, label }) => (
-  <div className="timer-box">
-    <span className="timer-value" key={val}>
+  <motion.div
+    whileHover={{ scale: 1.1 }}
+    className="flex flex-col items-center"
+  >
+    <motion.span
+      key={val}
+      initial={{ scale: 1.3, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ duration: 0.3, ease: [0.34, 1.56, 0.64, 1] }}
+      className="text-2xl md:text-5xl font-black text-transparent bg-linear-to-br from-pink-500 to-purple-500 bg-clip-text tabular-nums"
+    >
       {val}
+    </motion.span>
+    <span className="text-[10px] md:text-xs text-rose-400 uppercase tracking-wider mt-1">
+      {label}
     </span>
-    <span className="timer-label">{label}</span>
-  </div>
+  </motion.div>
 ));
 
 TimerBox.displayName = "TimerBox";
@@ -208,12 +400,23 @@ TimerBox.displayName = "TimerBox";
 // TIMELINE SECTION
 // ============================================================================
 const TimelineSection = memo(() => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+
   return (
-    <section className="min-h-screen snap-start flex items-center justify-center p-4 md:p-8 py-20">
+    <section
+      ref={ref}
+      className="min-h-screen snap-start flex items-center justify-center p-4 md:p-8 py-20"
+    >
       <div className="max-w-4xl w-full space-y-8 md:space-y-12">
-        <h3 className="text-4xl md:text-5xl font-bold text-center gradient-text-shimmer mb-8 md:mb-16">
+        <motion.h3
+          initial={{ opacity: 0, y: 20 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6 }}
+          className="text-4xl md:text-5xl font-bold text-center bg-linear-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent mb-8 md:mb-16"
+        >
           Our Journey ✨
-        </h3>
+        </motion.h3>
 
         {memories.map((memory, index) => (
           <TimelineCard key={memory.title} memory={memory} index={index} />
@@ -226,36 +429,33 @@ const TimelineSection = memo(() => {
 TimelineSection.displayName = "TimelineSection";
 
 const TimelineCard = memo(({ memory, index }) => {
-  const [isVisible, setIsVisible] = useState(false);
   const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-50px" });
   const isEven = index % 2 === 0;
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect(); // Stop observing after visible
-        }
-      },
-      { threshold: 0.2, rootMargin: "0px 0px -100px 0px" }
-    );
-
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <div
+    <motion.div
       ref={ref}
-      className={`timeline-card ${isVisible ? "visible" : ""} ${
-        isEven ? "timeline-left" : "timeline-right"
+      initial="hidden"
+      animate={isInView ? "visible" : "hidden"}
+      variants={isEven ? slideInLeft : slideInRight}
+      transition={{ delay: index * 0.1 }}
+      className={`flex items-center gap-4 md:gap-6 ${
+        isEven ? "flex-col md:flex-row" : "flex-col md:flex-row-reverse"
       }`}
-      style={{ animationDelay: `${index * 0.1}s` }}
     >
-      <div className="timeline-icon gradient-bg-animated">{memory.icon}</div>
+      <motion.div
+        whileHover={{ scale: 1.1, rotate: 5 }}
+        transition={{ type: "spring", stiffness: 300 }}
+        className="w-20 h-20 md:w-24 md:h-24 rounded-2xl bg-linear-to-br from-pink-400 to-purple-500 flex items-center justify-center text-4xl md:text-5xl shadow-xl shrink-0"
+      >
+        {memory.icon}
+      </motion.div>
 
-      <div className="timeline-content glass-card">
+      <motion.div
+        whileHover={{ scale: 1.02, y: -4 }}
+        className="flex-1 w-full bg-white/30 backdrop-blur-xl p-4 md:p-6 rounded-2xl border border-white/30 shadow-lg"
+      >
         <h4 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">
           {memory.title}
         </h4>
@@ -265,8 +465,8 @@ const TimelineCard = memo(({ memory, index }) => {
         <p className="text-gray-600 text-sm md:text-base">
           {memory.description}
         </p>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 });
 
@@ -276,29 +476,69 @@ TimelineCard.displayName = "TimelineCard";
 // GALLERY SECTION
 // ============================================================================
 const GallerySection = memo(() => {
-  const photos = [
-    { emoji: "📸", caption: "Our First Selfie", gradient: "gradient-pink" },
-    { emoji: "🌅", caption: "Sunset Together", gradient: "gradient-orange" },
-    { emoji: "🎭", caption: "Movie Night", gradient: "gradient-purple" },
-    { emoji: "🍝", caption: "Dinner Date", gradient: "gradient-red" },
-  ];
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-100px" });
+
+  const photos = useMemo(
+    () => [
+      {
+        emoji: "📸",
+        caption: "Our First Selfie",
+        color: "from-pink-400 to-rose-500",
+      },
+      {
+        emoji: "🌅",
+        caption: "Sunset Together",
+        color: "from-orange-400 to-pink-500",
+      },
+      {
+        emoji: "🎭",
+        caption: "Movie Night",
+        color: "from-purple-400 to-pink-500",
+      },
+      {
+        emoji: "🍝",
+        caption: "Dinner Date",
+        color: "from-red-400 to-rose-500",
+      },
+    ],
+    []
+  );
 
   return (
-    <section className="min-h-screen snap-start flex items-center justify-center p-4 md:p-8 py-20">
+    <section
+      ref={ref}
+      className="min-h-screen snap-start flex items-center justify-center p-4 md:p-8 py-20"
+    >
       <div className="max-w-5xl w-full">
-        <h3 className="text-4xl md:text-5xl font-bold text-center gradient-text-shimmer mb-8 md:mb-16">
+        <motion.h3
+          initial={{ opacity: 0, y: 20 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6 }}
+          className="text-4xl md:text-5xl font-bold text-center bg-linear-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent mb-8 md:mb-16"
+        >
           Our Memories 💕
-        </h3>
+        </motion.h3>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate={isInView ? "visible" : "hidden"}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6"
+        >
           {photos.map((photo, index) => (
             <GalleryCard key={photo.caption} photo={photo} index={index} />
           ))}
-        </div>
+        </motion.div>
 
-        <p className="text-center text-gray-500 mt-8 italic text-sm fade-in">
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={isInView ? { opacity: 1 } : {}}
+          transition={{ delay: 0.8 }}
+          className="text-center text-gray-500 mt-8 italic text-sm"
+        >
           Replace these with your actual photos! 📷
-        </p>
+        </motion.p>
       </div>
     </section>
   );
@@ -307,37 +547,25 @@ const GallerySection = memo(() => {
 GallerySection.displayName = "GallerySection";
 
 const GalleryCard = memo(({ photo, index }) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.3 }
-    );
-
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <div
-      ref={ref}
-      className={`gallery-card ${photo.gradient} ${isVisible ? "visible" : ""}`}
-      style={{ animationDelay: `${index * 0.1}s` }}
+    <motion.div
+      variants={scaleIn}
+      whileHover={{ scale: 1.05, rotate: 5 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ delay: index * 0.1 }}
+      className={`aspect-square rounded-2xl bg-linear-to-br ${photo.color} p-4 md:p-6 flex flex-col items-center justify-center text-center shadow-xl cursor-pointer`}
     >
-      <div className="text-4xl md:text-6xl mb-2 md:mb-4 float-gentle">
+      <motion.div
+        animate={{ y: [0, -10, 0] }}
+        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+        className="text-4xl md:text-6xl mb-2 md:mb-4"
+      >
         {photo.emoji}
-      </div>
+      </motion.div>
       <p className="text-white font-semibold text-xs md:text-base drop-shadow-lg">
         {photo.caption}
       </p>
-    </div>
+    </motion.div>
   );
 });
 
@@ -347,55 +575,58 @@ GalleryCard.displayName = "GalleryCard";
 // LETTER SECTION
 // ============================================================================
 const LetterSection = memo(() => {
-  const [isVisible, setIsVisible] = useState(false);
   const ref = useRef(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.3 }
-    );
-
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, []);
+  const isInView = useInView(ref, { once: true, amount: 0.3 });
 
   return (
-    <section className="min-h-screen snap-start flex items-center justify-center p-4 md:p-8">
-      <div
-        ref={ref}
-        className={`letter-card glass-card ${isVisible ? "visible" : ""}`}
+    <section
+      ref={ref}
+      className="min-h-screen snap-start flex items-center justify-center p-4 md:p-8"
+    >
+      <motion.div
+        initial={{ opacity: 0, rotateY: -90 }}
+        animate={isInView ? { opacity: 1, rotateY: 0 } : {}}
+        transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1] }}
+        className="max-w-2xl w-full bg-linear-to-br from-white/40 to-white/20 backdrop-blur-xl p-6 md:p-12 rounded-3xl border border-white/30 shadow-2xl"
       >
-        <div className="text-5xl md:text-6xl text-center mb-6 md:mb-8 scale-bounce">
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={isInView ? { scale: 1 } : {}}
+          transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+          className="text-5xl md:text-6xl text-center mb-6 md:mb-8"
+        >
           💌
-        </div>
+        </motion.div>
 
-        <div className="space-y-4 md:space-y-6 text-gray-700 leading-relaxed text-sm md:text-base">
-          <p className="letter-line">Dear Nathasha,</p>
+        <motion.div
+          variants={staggerContainer}
+          initial="hidden"
+          animate={isInView ? "visible" : "hidden"}
+          className="space-y-4 md:space-y-6 text-gray-700 leading-relaxed text-sm md:text-base"
+        >
+          <motion.p variants={fadeInUp}>Dear Nathasha,</motion.p>
 
-          <p className="letter-line">
+          <motion.p variants={fadeInUp}>
             One year ago, you walked into my life and everything changed. Every
             moment with you feels like magic, and I still can't believe how
             lucky I am to call you mine.
-          </p>
+          </motion.p>
 
-          <p className="letter-line">
+          <motion.p variants={fadeInUp}>
             Thank you for all the laughter, adventures, and endless love. Here's
             to many more years of creating beautiful memories together.
-          </p>
+          </motion.p>
 
-          <p className="letter-line text-right font-semibold text-rose-600">
+          <motion.p
+            variants={fadeInUp}
+            className="text-right font-semibold text-rose-600"
+          >
             Forever yours,
             <br />
             Nadun ❤️
-          </p>
-        </div>
-      </div>
+          </motion.p>
+        </motion.div>
+      </motion.div>
     </section>
   );
 });
@@ -406,44 +637,60 @@ LetterSection.displayName = "LetterSection";
 // FINAL SECTION
 // ============================================================================
 const FinalSection = memo(() => {
-  const [isVisible, setIsVisible] = useState(false);
   const ref = useRef(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.5 }
-    );
-
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, []);
+  const isInView = useInView(ref, { once: true, amount: 0.5 });
 
   return (
     <section
       ref={ref}
       className="min-h-screen snap-start flex items-center justify-center p-4 md:p-8"
     >
-      <div
-        className={`text-center space-y-6 md:space-y-8 ${
-          isVisible ? "final-content" : ""
-        }`}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.5 }}
+        animate={isInView ? { opacity: 1, scale: 1 } : {}}
+        transition={{ duration: 0.8, ease: [0.34, 1.56, 0.64, 1] }}
+        className="text-center space-y-6 md:space-y-8"
       >
-        <div className="final-heart">💖</div>
+        <motion.div
+          animate={
+            isInView
+              ? {
+                  scale: [1, 1.15, 1],
+                }
+              : {}
+          }
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+          className="text-7xl md:text-9xl"
+        >
+          💖
+        </motion.div>
 
-        <h2 className="text-4xl md:text-6xl font-black gradient-text-wave px-4">
+        <h2 className="text-4xl md:text-6xl font-black bg-linear-to-r from-pink-500 via-rose-500 to-purple-500 bg-clip-text text-transparent px-4">
           Happy 1st Anniversary!
         </h2>
 
-        <p className="text-xl md:text-2xl text-rose-400 pulse-subtle">
+        <motion.p
+          animate={
+            isInView
+              ? {
+                  opacity: [0.7, 1, 0.7],
+                }
+              : {}
+          }
+          transition={{
+            duration: 3,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+          className="text-xl md:text-2xl text-rose-400"
+        >
           To many more adventures together 🌹
-        </p>
-      </div>
+        </motion.p>
+      </motion.div>
     </section>
   );
 });
